@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
 export default defineConfig({
-  base: "/llamacoder-project/",
+  base: "/protoHQ-cryptacore_ai_services/",
   plugins: [react()],
   resolve: {
     alias: {
