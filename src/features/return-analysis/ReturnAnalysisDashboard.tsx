@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { Comment } from '../types';
-import { getAIScoreColor, getCommentBackgroundColor } from '../utils/format';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Shield, AlertTriangle, TrendingUp, Filter, Search, Eye, Check, X, Flag } from 'lucide-react';
+import { Comment } from '../../types';
+import { getAIScoreColor, getCommentBackgroundColor } from '../../utils/format';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Shield, AlertTriangle, TrendingUp, Filter, Search, Eye, Check, X, Flag, Download } from 'lucide-react';
+import { ReturnAnalysisRow } from '../../components/ui/ReturnAnalysisRow';
+import { downloadCSV } from '../../utils/export';
+import { useSettings } from '../../context/SettingsContext';
+
+import { useReturnFilter } from '../../hooks/useReturnFilter';
 
 interface ReturnAnalysisDashboardProps {
   comments: Comment[];
@@ -11,25 +16,33 @@ interface ReturnAnalysisDashboardProps {
 }
 
 export function ReturnAnalysisDashboard({ comments, isLoading }: ReturnAnalysisDashboardProps) {
+  const { settings } = useSettings();
   const [selectedReturn, setSelectedReturn] = useState<Comment | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [riskFilter, setRiskFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
 
-  const filteredComments = comments.filter(comment => {
-    const matchesSearch = comment.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         comment.product.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRisk = riskFilter === 'all' || 
-                       (riskFilter === 'high' && comment.aiScore > 70) ||
-                       (riskFilter === 'medium' && comment.aiScore > 40 && comment.aiScore <= 70) ||
-                       (riskFilter === 'low' && comment.aiScore <= 40);
-    
-    return matchesSearch && matchesRisk;
-  });
+  const {
+    searchTerm,
+    setSearchTerm,
+    riskFilter,
+    setRiskFilter,
+    selectedIds,
+    filteredComments,
+    highRiskReturns,
+    mediumRiskReturns,
+    lowRiskReturns,
+    toggleSelection,
+    toggleAll,
+    clearSelection
+  } = useReturnFilter({ comments, settings });
 
-  const highRiskReturns = filteredComments.filter(c => c.aiScore > 70);
-  const mediumRiskReturns = filteredComments.filter(c => c.aiScore > 40 && c.aiScore <= 70);
-  const lowRiskReturns = filteredComments.filter(c => c.aiScore <= 40);
+  const handleExportCSV = () => {
+    downloadCSV(filteredComments, `return-analysis-report-${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const handleBatchAction = (action: 'approve' | 'flag') => {
+    // In a real app, this would verify the action with the backend
+    // console.log(`Batch ${action} on ${selectedIds.size} items`);
+    clearSelection();
+  };
 
   if (isLoading) {
     return (
@@ -49,9 +62,54 @@ export function ReturnAnalysisDashboard({ comments, isLoading }: ReturnAnalysisD
       {/* Search and Filters */}
       <Card className="border-2 border-gray-200 shadow-lg">
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Filter className="w-5 h-5 mr-2 text-blue-600" />
-            Filter Returns
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center">
+                <Filter className="w-5 h-5 mr-2 text-blue-600" />
+                Filter Returns
+              </div>
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 animate-in fade-in slide-in-from-left-4 duration-200">
+                  <span className="text-sm font-medium text-blue-700">{selectedIds.size} Selected</span>
+                  <div className="h-4 w-px bg-blue-200 mx-1" />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleBatchAction('approve')}
+                    className="h-6 px-2 text-green-600 hover:text-green-700 hover:bg-green-100"
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleBatchAction('flag')}
+                    className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-100"
+                  >
+                    Flag
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleAll}
+                className="hidden sm:flex"
+              >
+                {selectedIds.size === filteredComments.length ? 'Deselect All' : 'Select All'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCSV}
+                className="flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export CSV
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -119,6 +177,8 @@ export function ReturnAnalysisDashboard({ comments, isLoading }: ReturnAnalysisD
                   comment={comment}
                   onSelect={() => setSelectedReturn(comment)}
                   priority="high"
+                  selected={selectedIds.has(comment.id)}
+                  onToggleSelect={() => toggleSelection(comment.id)}
                 />
               ))}
             </div>
@@ -143,6 +203,8 @@ export function ReturnAnalysisDashboard({ comments, isLoading }: ReturnAnalysisD
                   comment={comment}
                   onSelect={() => setSelectedReturn(comment)}
                   priority="medium"
+                  selected={selectedIds.has(comment.id)}
+                  onToggleSelect={() => toggleSelection(comment.id)}
                 />
               ))}
             </div>
@@ -167,6 +229,8 @@ export function ReturnAnalysisDashboard({ comments, isLoading }: ReturnAnalysisD
                   comment={comment}
                   onSelect={() => setSelectedReturn(comment)}
                   priority="low"
+                  selected={selectedIds.has(comment.id)}
+                  onToggleSelect={() => toggleSelection(comment.id)}
                 />
               ))}
             </div>
@@ -179,81 +243,12 @@ export function ReturnAnalysisDashboard({ comments, isLoading }: ReturnAnalysisD
         <CommentDetailModal
           comment={selectedReturn}
           onClose={() => setSelectedReturn(null)}
-          onAction={() => {}}
+          onAction={() => { }}
         />
       )}
     </div>
   );
 }
 
-// Return Analysis Row Component
-function ReturnAnalysisRow({ 
-  comment, 
-  onSelect, 
-  priority 
-}: { 
-  comment: Comment; 
-  onSelect: () => void; 
-  priority: 'high' | 'medium' | 'low';
-}) {
-  const scoreColor = getAIScoreColor(comment.aiScore);
-  const priorityColors = {
-    high: 'border-red-500 bg-red-50',
-    medium: 'border-orange-500 bg-orange-50',
-    low: 'border-green-500 bg-green-50'
-  };
-
-  return (
-    <div
-      className={`p-4 border-l-4 ${priorityColors[priority]} hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-[1.02]`}
-      onClick={onSelect}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center space-x-3 mb-2">
-            <h3 className="font-semibold text-gray-900">{comment.author}</h3>
-            {comment.verifiedPurchase && (
-              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                Verified
-              </span>
-            )}
-          </div>
-          
-          <p className="text-sm text-gray-700 mb-2 line-clamp-2">{comment.content}</p>
-          
-          <div className="flex items-center space-x-4 text-xs text-gray-500">
-            <span>{comment.product}</span>
-            <span>•</span>
-            <span>{new Date(comment.timestamp).toLocaleDateString()}</span>
-            <span>•</span>
-            <span>Rating: {comment.rating}/5</span>
-          </div>
-        </div>
-        
-        <div className="flex flex-col items-end space-y-2">
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-white shadow-lg ${scoreColor.bg}`}>
-            {comment.aiScore}
-          </div>
-          
-          <div className="flex space-x-1">
-            <Button size="sm" variant="outline" className="h-8 px-2">
-              <Eye className="w-3 h-3" />
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 px-2 text-green-600 hover:bg-green-50">
-              <Check className="w-3 h-3" />
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 px-2 text-red-600 hover:bg-red-50">
-              <X className="w-3 h-3" />
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 px-2 text-orange-600 hover:bg-orange-50">
-              <Flag className="w-3 h-3" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // Import the modal component
-import { CommentDetailModal } from './CommentDetailModal';
+import { CommentDetailModal } from '../comment-flagger/CommentDetailModal';

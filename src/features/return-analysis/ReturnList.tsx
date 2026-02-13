@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { ReturnRequest } from '../types';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { ReturnRequest } from '../../types';
 import { ReturnRow } from './ReturnRow';
 import { Filter, ArrowUpDown } from 'lucide-react';
 
@@ -15,14 +15,14 @@ interface ReturnListProps {
   onReturnClick: (returnItem: ReturnRequest) => void;
 }
 
-export function ReturnList({ 
-  returns, 
-  isLoading, 
-  filter, 
-  sortBy, 
-  onFilterChange, 
+export function ReturnList({
+  returns,
+  isLoading,
+  filter,
+  sortBy,
+  onFilterChange,
   onSortChange,
-  onReturnClick 
+  onReturnClick
 }: ReturnListProps) {
   return (
     <Card className="bg-white border-2 border-gray-200">

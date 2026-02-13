@@ -1,7 +1,7 @@
 import React from 'react';
-import { Comment } from '../types';
-import { getAIScoreColor } from '../utils/format';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Comment } from '../../types';
+import { getAIScoreColor } from '../../utils/format';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Check, X, Star, AlertTriangle, Shield, TrendingUp } from 'lucide-react';
 
 interface DemoAnalysisProps {
@@ -11,19 +11,17 @@ interface DemoAnalysisProps {
 export function DemoAnalysis({ comment }: DemoAnalysisProps) {
   const scoreColor = getAIScoreColor(comment.aiScore);
   const isLikelyPaid = comment.aiScore > 85;
-  
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <Card className={`border-2 shadow-xl transform transition-all duration-300 hover:scale-[1.02] ${
-        isLikelyPaid ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50' : 
-        comment.aiScore > 70 ? 'border-orange-300 bg-gradient-to-br from-orange-50 to-yellow-50' : 
-        'border-green-300 bg-gradient-to-br from-green-50 to-emerald-50'
-      }`}>
+      <Card className={`border-2 shadow-xl transform transition-all duration-300 hover:scale-[1.02] ${isLikelyPaid ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50' :
+          comment.aiScore > 70 ? 'border-orange-300 bg-gradient-to-br from-orange-50 to-yellow-50' :
+            'border-green-300 bg-gradient-to-br from-green-50 to-emerald-50'
+        }`}>
         <CardHeader className="pb-4">
           <CardTitle className="text-base font-semibold flex items-center">
-            <div className={`p-2 rounded-lg mr-3 ${
-              isLikelyPaid ? 'bg-red-100' : comment.aiScore > 70 ? 'bg-orange-100' : 'bg-green-100'
-            }`}>
+            <div className={`p-2 rounded-lg mr-3 ${isLikelyPaid ? 'bg-red-100' : comment.aiScore > 70 ? 'bg-orange-100' : 'bg-green-100'
+              }`}>
               {isLikelyPaid ? (
                 <X className="w-5 h-5 text-red-600" />
               ) : comment.aiScore > 70 ? (
@@ -61,11 +59,11 @@ export function DemoAnalysis({ comment }: DemoAnalysisProps) {
                 </p>
               </div>
             </div>
-            
+
             {/* Risk Meter */}
             <div className="flex flex-col items-center">
               <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div 
+                <div
                   className={`h-full rounded-full transition-all duration-1000 ${scoreColor.bg}`}
                   style={{ width: `${comment.aiScore}%` }}
                 ></div>
@@ -73,7 +71,7 @@ export function DemoAnalysis({ comment }: DemoAnalysisProps) {
               <span className="text-xs text-gray-500 mt-1">Risk Meter</span>
             </div>
           </div>
-          
+
           {/* Alert Banner */}
           {comment.flagged && (
             <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-red-100 to-pink-100 border border-red-200 rounded-xl animate-pulse">
@@ -88,7 +86,7 @@ export function DemoAnalysis({ comment }: DemoAnalysisProps) {
               </div>
             </div>
           )}
-          
+
           {/* Detection Patterns */}
           {comment.indicators.length > 0 && (
             <div>
@@ -100,15 +98,14 @@ export function DemoAnalysis({ comment }: DemoAnalysisProps) {
                 {comment.indicators.map((indicator, index) => (
                   <div
                     key={index}
-                    className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium border transform transition-all duration-300 hover:scale-105 hover:shadow-md ${
-                      indicator.includes('Trademark') || indicator.includes('Likely Paid')
+                    className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium border transform transition-all duration-300 hover:scale-105 hover:shadow-md ${indicator.includes('Trademark') || indicator.includes('Likely Paid')
                         ? 'bg-gradient-to-r from-red-100 to-pink-100 text-red-800 border-red-200'
                         : indicator.includes('Unverified + Extreme') || indicator.includes('Extreme Opinion')
-                        ? 'bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-800 border-orange-200'
-                        : indicator.includes('Corporate') || indicator.includes('AI')
-                        ? 'bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 border-purple-200'
-                        : 'bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-yellow-200'
-                    }`}
+                          ? 'bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-800 border-orange-200'
+                          : indicator.includes('Corporate') || indicator.includes('AI')
+                            ? 'bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 border-purple-200'
+                            : 'bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border-yellow-200'
+                      }`}
                     style={{
                       animationDelay: `${index * 100}ms`
                     }}
@@ -121,7 +118,7 @@ export function DemoAnalysis({ comment }: DemoAnalysisProps) {
               </div>
             </div>
           )}
-          
+
           {/* Scoring Breakdown */}
           <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-4 border border-gray-200">
             <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center">

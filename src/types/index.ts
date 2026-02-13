@@ -1,3 +1,4 @@
+
 export interface ReturnRequest {
   id: string;
   orderId: string;
@@ -38,4 +39,12 @@ export interface Comment {
   manuallyFlagged?: boolean;
   manuallyApproved?: boolean;
   indicators: string[];
+}
+
+export interface RiskSettings {
+  highRiskThreshold: number;
+  mediumRiskThreshold: number;
+  autoFlagThreshold: number;
+  enableAiDetection: boolean;
+  enableSentimentAnalysis: boolean;
 }

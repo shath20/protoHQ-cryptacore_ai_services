@@ -26,10 +26,10 @@ export function FraudScoreCard({ title, value, icon, trend, color }: FraudScoreC
   const trendColor = trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : 'text-gray-600';
 
   return (
-    <div className={`relative group overflow-hidden rounded-xl border-2 ${bgClasses[color]} bg-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}>
+    <div className={`relative group overflow-hidden rounded-xl border-2 ${bgClasses[color]} bg-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-in zoom-in-95 duration-500`}>
       {/* Animated Background Gradient */}
       <div className={`absolute inset-0 bg-gradient-to-br ${colorClasses[color]} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
-      
+
       <div className="relative p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -44,7 +44,7 @@ export function FraudScoreCard({ title, value, icon, trend, color }: FraudScoreC
               </div>
             </div>
           </div>
-          
+
           <div className={`relative p-3 rounded-xl bg-gradient-to-br ${colorClasses[color]} shadow-lg transform group-hover:scale-110 transition-transform duration-300`}>
             <div className="absolute inset-0 bg-white opacity-20 rounded-xl animate-pulse"></div>
             <div className="relative text-white">
@@ -52,12 +52,12 @@ export function FraudScoreCard({ title, value, icon, trend, color }: FraudScoreC
             </div>
           </div>
         </div>
-        
+
         {/* Animated Progress Bar */}
         <div className="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
-          <div 
+          <div
             className={`h-full bg-gradient-to-r ${colorClasses[color]} rounded-full transition-all duration-1000 ease-out`}
-            style={{ 
+            style={{
               width: `${Math.min((value / 100) * 100, 100)}%`,
               animation: 'slideIn 1s ease-out'
             }}

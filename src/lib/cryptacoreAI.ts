@@ -1,16 +1,9 @@
 import { ReturnRequest, CustomerProfile, CryptacoreAIAssessment } from '../types/returns';
 
+import { RISK_MODEL_CONFIG } from '../config/risk-model';
+
 export class CryptacoreAI {
-  private static readonly POLICY_DEADLINE_DAYS = 30;
-  private static readonly NEW_CUSTOMER_THRESHOLD_DAYS = 90;
-  private static readonly HIGH_RETURN_THRESHOLD = 0.15; // 15% return rate
-  private static readonly CONCERNING_RETURN_THRESHOLD = 0.25; // 25% return rate
-  
-  // New: Score dampening and decay constants
-  private static readonly SCORE_DECAY_RATE = 0.85; // 15% decay per month of good behavior
-  private static readonly FORGIVENESS_THRESHOLD = 90; // days of normal behavior to trigger decay
-  private static readonly MINOR_SIGNAL_CAP = 8; // max score from any single minor indicator
-  private static readonly PATTERN_REPETITION_THRESHOLD = 3; // minimum repetitions for meaningful risk
+  // Constants now loaded from config/risk-model.ts
 
   static assessReturnRisk(returnRequest: ReturnRequest, customerProfile: CustomerProfile): CryptacoreAIAssessment {
     // Initialize assessment
@@ -84,17 +77,17 @@ export class CryptacoreAI {
     let severity: 'normal' | 'elevated' | 'concerning' = 'normal';
 
     // First-time returns and new customers always get minimal risk
-    if (profile.totalReturns <= 1 || profile.accountAge < this.NEW_CUSTOMER_THRESHOLD_DAYS) {
+    if (profile.totalReturns <= 1 || profile.accountAge < RISK_MODEL_CONFIG.NEW_CUSTOMER_THRESHOLD_DAYS) {
       score = 0;
       explanation = `First-time return or new customer (${profile.accountAge} days). Normal operational behavior.`;
-    } else if (returnRate <= this.HIGH_RETURN_THRESHOLD) {
+    } else if (returnRate <= RISK_MODEL_CONFIG.HIGH_RETURN_THRESHOLD) {
       // Apply dampening for low-risk patterns
-      score = Math.min(returnRate * 50, this.MINOR_SIGNAL_CAP); // Reduced from 100 to 50 multiplier
+      score = Math.min(returnRate * 50, RISK_MODEL_CONFIG.MINOR_SIGNAL_CAP); // Reduced from 100 to 50 multiplier
       explanation = `Return rate of ${(returnRate * 100).toFixed(1)}% across ${profile.totalOrders} orders. Within acceptable range.`;
-    } else if (returnRate <= this.CONCERNING_RETURN_THRESHOLD) {
+    } else if (returnRate <= RISK_MODEL_CONFIG.CONCERNING_RETURN_THRESHOLD) {
       // Only meaningful after repeated patterns
-      if (profile.totalReturns >= this.PATTERN_REPETITION_THRESHOLD) {
-        score = 15 + (returnRate - this.HIGH_RETURN_THRESHOLD) * 100; // Reduced escalation
+      if (profile.totalReturns >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD) {
+        score = 15 + (returnRate - RISK_MODEL_CONFIG.HIGH_RETURN_THRESHOLD) * 100; // Reduced escalation
         explanation = `Elevated return rate of ${(returnRate * 100).toFixed(1)}% across ${profile.totalReturns} orders. Pattern requires attention.`;
         severity = 'elevated';
       } else {
@@ -103,8 +96,8 @@ export class CryptacoreAI {
       }
     } else {
       // High rate only concerning with sufficient repetition
-      if (profile.totalReturns >= this.PATTERN_REPETITION_THRESHOLD + 1) {
-        score = 25 + Math.min((returnRate - this.CONCERNING_RETURN_THRESHOLD) * 100, 20); // Capped escalation
+      if (profile.totalReturns >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD + 1) {
+        score = 25 + Math.min((returnRate - RISK_MODEL_CONFIG.CONCERNING_RETURN_THRESHOLD) * 100, 20); // Capped escalation
         explanation = `High return rate of ${(returnRate * 100).toFixed(1)}% with ${profile.totalReturns} returns. Pattern indicates operational risk.`;
         severity = 'concerning';
       } else {
@@ -115,7 +108,7 @@ export class CryptacoreAI {
     }
 
     // Check for accelerating pattern (only with sufficient history)
-    if (profile.totalReturns > this.PATTERN_REPETITION_THRESHOLD) {
+    if (profile.totalReturns > RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD) {
       const recentReturns = this.getRecentReturnFrequency(profile);
       if (recentReturns > returnRate * 1.5) {
         score += 8; // Reduced from 15
@@ -133,12 +126,12 @@ export class CryptacoreAI {
     let severity: 'normal' | 'elevated' | 'concerning' = 'normal';
 
     // Single near-deadline returns are not concerning
-    const daysToDeadline = this.POLICY_DEADLINE_DAYS - returnRequest.daysSincePurchase;
-    
+    const daysToDeadline = RISK_MODEL_CONFIG.POLICY_DEADLINE_DAYS - returnRequest.daysSincePurchase;
+
     if (daysToDeadline < 3 && profile.totalReturns > 1) {
       // Only meaningful if repeated pattern exists
       const timingConsistency = this.analyzeTimingConsistency(profile);
-      if (timingConsistency > 0.7 && profile.totalReturns >= this.PATTERN_REPETITION_THRESHOLD) {
+      if (timingConsistency > 0.7 && profile.totalReturns >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD) {
         score = 8; // Reduced from 10
         explanation = `Repeated pattern of returns within ${daysToDeadline} days of policy deadline across ${profile.totalReturns} returns.`;
         severity = 'elevated';
@@ -152,7 +145,7 @@ export class CryptacoreAI {
     }
 
     // Check for consistent low-variance timing (only with sufficient data)
-    if (profile.totalReturns > this.PATTERN_REPETITION_THRESHOLD + 1) {
+    if (profile.totalReturns > RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD + 1) {
       const timingVariance = this.analyzeTimingVariance(profile);
       if (timingVariance < 0.2) { // Low variance = suspicious consistency
         score += 6; // Reduced from 12
@@ -175,18 +168,18 @@ export class CryptacoreAI {
     const currentReturnImpact = returnRequest.productCost / (profile.lifetimeValue || returnRequest.productPrice);
 
     // New customers get operational grace
-    if (profile.accountAge < this.NEW_CUSTOMER_THRESHOLD_DAYS || profile.totalReturns <= 1) {
+    if (profile.accountAge < RISK_MODEL_CONFIG.NEW_CUSTOMER_THRESHOLD_DAYS || profile.totalReturns <= 1) {
       score = 0;
       explanation = `New customer or first return status provides operational grace for profit impact assessment.`;
     } else if (profitToLossRatio > 5) {
       score = 0;
       explanation = `Strong positive profit-to-loss ratio (${profitToLossRatio.toFixed(1)}:1) indicates healthy customer relationship.`;
     } else if (profitToLossRatio > 2) {
-      score = Math.min(3, this.MINOR_SIGNAL_CAP); // Capped minor signal
+      score = Math.min(3, RISK_MODEL_CONFIG.MINOR_SIGNAL_CAP); // Capped minor signal
       explanation = `Moderate profit-to-loss ratio (${profitToLossRatio.toFixed(1)}:1). Within acceptable range.`;
     } else if (profitToLossRatio > 1) {
       // Only concerning with repeated behavioral indicators
-      if (profile.totalReturns >= this.PATTERN_REPETITION_THRESHOLD) {
+      if (profile.totalReturns >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD) {
         score = 6; // Reduced from 10
         explanation = `Low profit-to-loss ratio (${profitToLossRatio.toFixed(1)}:1) with return history warrants monitoring.`;
         severity = 'elevated';
@@ -196,7 +189,7 @@ export class CryptacoreAI {
       }
     } else {
       // Negative ratio only concerning with clear patterns
-      if (profile.totalReturns >= this.PATTERN_REPETITION_THRESHOLD + 1) {
+      if (profile.totalReturns >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD + 1) {
         score = 10; // Reduced from 15
         explanation = `Negative profit-to-loss ratio (${profitToLossRatio.toFixed(1)}:1) with established return pattern requires attention.`;
         severity = 'concerning';
@@ -224,7 +217,7 @@ export class CryptacoreAI {
     if (profile.accountAge > 180 && profile.behaviorTrend === 'increasing_returns') {
       // Check if recent behavior justifies concern
       const recentBehaviorScore = this.calculateRecentBehaviorScore(profile);
-      if (recentBehaviorScore > 0.6 && profile.totalReturns >= this.PATTERN_REPETITION_THRESHOLD) {
+      if (recentBehaviorScore > 0.6 && profile.totalReturns >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD) {
         score = 10; // Reduced from 15
         explanation = `Established account (${profile.accountAge} days) showing sustained increase in return behavior.`;
         severity = 'concerning';
@@ -234,7 +227,7 @@ export class CryptacoreAI {
       }
     } else if (profile.accountAge > 90 && profile.totalReturns > profile.totalOrders * 0.3) {
       // Only meaningful with sufficient repetition
-      if (profile.totalReturns >= this.PATTERN_REPETITION_THRESHOLD) {
+      if (profile.totalReturns >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD) {
         score = 6; // Reduced from 10
         explanation = `Account behavior shift detected with elevated return activity pattern.`;
         severity = 'elevated';
@@ -249,7 +242,7 @@ export class CryptacoreAI {
 
     // Check for sudden changes (reduced impact)
     const behaviorChange = this.detectBehaviorChange(profile);
-    if (behaviorChange > 0.7 && profile.totalReturns >= this.PATTERN_REPETITION_THRESHOLD) {
+    if (behaviorChange > 0.7 && profile.totalReturns >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD) {
       score += 6; // Reduced from 12
       explanation += ` Significant behavioral change sustained over multiple returns.`;
       severity = severity === 'normal' ? 'elevated' : 'concerning';
@@ -268,11 +261,11 @@ export class CryptacoreAI {
     const reasonRepetition = this.analyzeReasonRepetition(returnRequest.returnReason, returnRequest.previousReturnReasons);
 
     // Only concerning with sufficient repetition
-    if (reasonVagueness > 0.8 && returnRequest.previousReturnReasons.length >= this.PATTERN_REPETITION_THRESHOLD) {
+    if (reasonVagueness > 0.8 && returnRequest.previousReturnReasons.length >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD) {
       score = 5; // Reduced from 8
       explanation = `Pattern of vague return explanations across ${returnRequest.previousReturnReasons.length} returns.`;
       severity = 'elevated';
-    } else if (reasonRepetition > 0.6 && returnRequest.previousReturnReasons.length >= this.PATTERN_REPETITION_THRESHOLD) {
+    } else if (reasonRepetition > 0.6 && returnRequest.previousReturnReasons.length >= RISK_MODEL_CONFIG.PATTERN_REPETITION_THRESHOLD) {
       score = 6; // Reduced from 10
       explanation = `Template-like return reason patterns detected across multiple returns.`;
       severity = 'elevated';
@@ -294,9 +287,9 @@ export class CryptacoreAI {
   private static applyScoreDampening(assessment: CryptacoreAIAssessment, profile: CustomerProfile) {
     // Apply forgiveness for good behavior
     const daysSinceLastReturn = this.getDaysSinceLastReturn(profile);
-    if (daysSinceLastReturn > this.FORGIVENESS_THRESHOLD) {
-      const decayFactor = Math.pow(this.SCORE_DECAY_RATE, Math.floor(daysSinceLastReturn / 30));
-      
+    if (daysSinceLastReturn > RISK_MODEL_CONFIG.FORGIVENESS_THRESHOLD) {
+      const decayFactor = Math.pow(RISK_MODEL_CONFIG.SCORE_DECAY_RATE, Math.floor(daysSinceLastReturn / 30));
+
       Object.keys(assessment.patternIndicators).forEach(key => {
         const indicator = assessment.patternIndicators[key as keyof typeof assessment.patternIndicators];
         if (indicator.score > 0) {
@@ -308,7 +301,7 @@ export class CryptacoreAI {
 
     // Cap individual indicator scores to prevent over-escalation
     Object.values(assessment.patternIndicators).forEach(indicator => {
-      indicator.score = Math.min(indicator.score, this.MINOR_SIGNAL_CAP);
+      indicator.score = Math.min(indicator.score, RISK_MODEL_CONFIG.MINOR_SIGNAL_CAP);
     });
   }
 
@@ -322,9 +315,9 @@ export class CryptacoreAI {
     // Calculate weighted sum with dampening
     Object.values(indicators).forEach(indicator => {
       // Apply additional dampening for multiple minor signals
-      const weight = indicator.score > this.MINOR_SIGNAL_CAP * 0.5 ? 1.0 : 0.7;
+      const weight = indicator.score > RISK_MODEL_CONFIG.MINOR_SIGNAL_CAP * 0.5 ? 1.0 : 0.7;
       totalScore += indicator.score * weight;
-      
+
       if (indicator.severity === 'concerning') concerningCount++;
       if (indicator.severity === 'elevated') elevatedCount++;
     });
@@ -384,15 +377,15 @@ export class CryptacoreAI {
   // New: Enhanced audit justification with contribution percentages
   private static generateAuditJustification(assessment: CryptacoreAIAssessment) {
     const { riskScore, riskLevel, recommendedAction, patternIndicators } = assessment;
-    
+
     let justification = `CryptacoreAI Risk Assessment: ${riskLevel.toUpperCase()} (${riskScore}/100). `;
     justification += `Recommended Action: ${recommendedAction.replace(/_/g, ' ').toUpperCase()}. `;
-    
+
     // Add contribution-weighted explanations
     const sortedIndicators = Object.entries(patternIndicators)
       .filter(([_, indicator]) => indicator.score > 0)
       .sort(([_, a], [__, b]) => b.score - a.score);
-    
+
     if (sortedIndicators.length > 0) {
       justification += `Primary Risk Factors: `;
       sortedIndicators.forEach(([name, indicator], index) => {
@@ -403,9 +396,9 @@ export class CryptacoreAI {
       });
       justification += '. ';
     }
-    
+
     justification += `Confidence Level: ${assessment.confidenceLevel}%. Assessment based on cumulative pattern analysis with score dampening and time decay applied.`;
-    
+
     assessment.auditJustification = justification;
   }
 
@@ -418,8 +411,8 @@ export class CryptacoreAI {
 
   private static getDaysSinceLastReturn(profile: CustomerProfile): number {
     // Simplified - in real implementation would use actual last return date
-    return profile.lastReturnDate ? 
-      Math.floor((Date.now() - new Date(profile.lastReturnDate).getTime()) / (1000 * 60 * 60 * 24)) : 
+    return profile.lastReturnDate ?
+      Math.floor((Date.now() - new Date(profile.lastReturnDate).getTime()) / (1000 * 60 * 60 * 24)) :
       profile.accountAge;
   }
 
@@ -454,25 +447,25 @@ export class CryptacoreAI {
 
   private static analyzeReasonRepetition(currentReason: string, previousReasons: string[]): number {
     if (previousReasons.length === 0) return 0;
-    
-    const similarity = previousReasons.filter(reason => 
+
+    const similarity = previousReasons.filter(reason =>
       reason.toLowerCase().includes(currentReason.toLowerCase().split(' ')[0])
     ).length;
-    
+
     return Math.min(similarity / previousReasons.length, 1);
   }
 
   private static detectReasonCategoryMismatch(returnRequest: ReturnRequest): boolean {
-    return returnRequest.returnReasonType === 'defective' && 
-           returnRequest.productCategory === 'clothing' && 
-           !returnRequest.returnReason.toLowerCase().includes('tear') &&
-           !returnRequest.returnReason.toLowerCase().includes('rip');
+    return returnRequest.returnReasonType === 'defective' &&
+      returnRequest.productCategory === 'clothing' &&
+      !returnRequest.returnReason.toLowerCase().includes('tear') &&
+      !returnRequest.returnReason.toLowerCase().includes('rip');
   }
 
   // New: Generate cumulative risk factors with contribution percentages
   private static generateCumulativeRiskFactors(indicators: CryptacoreAIAssessment['patternIndicators'], totalScore: number): string[] {
     const factors: string[] = [];
-    
+
     Object.entries(indicators).forEach(([name, indicator]) => {
       if (indicator.score > 0) {
         const contribution = Math.round((indicator.score / totalScore) * 100);
@@ -480,7 +473,7 @@ export class CryptacoreAI {
         factors.push(`${displayName}: ${indicator.severity} (${indicator.score.toFixed(1)} points, ${contribution}% contribution)`);
       }
     });
-    
+
     return factors.sort((a, b) => {
       const aScore = parseFloat(a.match(/\(([\d.]+) points/)?.[1] || '0');
       const bScore = parseFloat(b.match(/\(([\d.]+) points/)?.[1] || '0');

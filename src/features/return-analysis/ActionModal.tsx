@@ -1,8 +1,8 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { ReturnRequest } from '../types';
-import { formatCurrency, getScoreColor, formatRelativeTime } from '../utils/format';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { ReturnRequest } from '../../types';
+import { formatCurrency, getScoreColor, formatRelativeTime } from '../../utils/format';
 import { X, CheckCircle, XCircle, Flag } from 'lucide-react';
 
 interface ActionModalProps {
@@ -13,7 +13,7 @@ interface ActionModalProps {
 
 export function ActionModal({ returnItem, onClose, onAction }: ActionModalProps) {
   const scoreColor = getScoreColor(returnItem.fraudScore);
-  
+
   const fraudFactors = [
     returnItem.returnHistory > 3 && `${returnItem.returnHistory} returns in last 90 days`,
     returnItem.accountAge < 30 && 'New account (less than 30 days)',
@@ -40,7 +40,7 @@ export function ActionModal({ returnItem, onClose, onAction }: ActionModalProps)
               </button>
             </div>
           </CardHeader>
-          
+
           <CardContent className="p-6">
             <div className="space-y-6">
               {/* Customer Info */}

@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Comment } from '../types';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Textarea } from '../../components/ui/textarea';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Comment } from '../../types';
 import { CommentRow } from './CommentRow';
 import { CommentDetailModal } from './CommentDetailModal';
 import { FraudScoreCard } from './FraudScoreCard';
 import { DemoAnalysis } from './DemoAnalysis';
-import { analyzeComment, generateIndicators } from '../lib/commentAnalysis';
+import { analyzeComment, generateIndicators } from '../../lib/commentAnalysis';
 import { MessageSquare, AlertTriangle, Star, Check, Play, Plus, Shield } from 'lucide-react';
+import { useSettings } from '../../context/SettingsContext';
+import { useCommentFilter } from '../../hooks/useCommentFilter';
 
 interface CommentFlaggerProps {
   comments: Comment[];
   isLoading: boolean;
-  filter: 'all' | 'flagged' | 'verified';
-  onFilterChange: (filter: 'all' | 'flagged' | 'verified') => void;
   onCommentAction: (action: 'approve' | 'remove' | 'flag', comment: Comment) => void;
   onAddComment: (comment: Comment) => void;
   stats: {
@@ -27,18 +27,28 @@ interface CommentFlaggerProps {
   };
 }
 
-export function CommentFlagger({ 
-  comments, 
-  isLoading, 
-  filter, 
-  onFilterChange,
+export function CommentFlagger({
+  comments,
+  isLoading,
   onCommentAction,
   onAddComment,
   stats
 }: CommentFlaggerProps) {
+  const { settings } = useSettings();
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
-  const [sortBy, setSortBy] = useState<'aiScore' | 'date' | 'rating'>('aiScore');
-  
+
+  const {
+    filter,
+    setFilter,
+    sortBy,
+    setSortBy,
+    selectedIds,
+    sortedComments,
+    toggleSelection,
+    toggleAll,
+    clearSelection
+  } = useCommentFilter({ comments });
+
   // Demo state
   const [demoAuthor, setDemoAuthor] = useState('');
   const [demoProduct, setDemoProduct] = useState('');
@@ -49,12 +59,12 @@ export function CommentFlagger({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
 
-  const sortedComments = [...comments].sort((a, b) => {
-    if (sortBy === 'aiScore') return b.aiScore - a.aiScore;
-    if (sortBy === 'date') return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    if (sortBy === 'rating') return b.rating - a.rating;
-    return 0;
-  });
+  const handleBatchAction = (action: 'approve' | 'flag' | 'remove') => {
+    // In a real app, this would verify the action with the backend or call onCommentAction for each
+    // console.log(`Batch ${action} on ${selectedIds.size} items`);
+    // Ideally update parent state here
+    clearSelection();
+  };
 
   const handleAnalyzeDemo = async () => {
     if (!demoAuthor || !demoProduct || !demoContent) {
@@ -63,10 +73,10 @@ export function CommentFlagger({
     }
 
     setIsAnalyzing(true);
-    
+
     // Simulate analysis delay for realism
     await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     const score = analyzeComment({
       id: 'temp',
       author: demoAuthor,
@@ -78,7 +88,7 @@ export function CommentFlagger({
       aiScore: 0,
       flagged: false,
       indicators: []
-    });
+    }, settings);
 
     const demoComment: Comment = {
       id: `demo-${Date.now()}`,
@@ -101,9 +111,9 @@ export function CommentFlagger({
         aiScore: score,
         flagged: false,
         indicators: []
-      }, score)
+      }, score, settings)
     };
-    
+
     setDemoAnalysis(demoComment);
     setIsAnalyzing(false);
   };
@@ -182,7 +192,7 @@ export function CommentFlagger({
             </Button>
           </div>
         </CardHeader>
-        
+
         {showDemo && (
           <CardContent className="space-y-4">
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
@@ -190,7 +200,7 @@ export function CommentFlagger({
                 <strong>New Scoring System:</strong> Focuses on unverified bias, product name injection, extreme sentiment without evidence, and AI patterns.
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="author" className="text-sm font-medium text-gray-700">
@@ -204,7 +214,7 @@ export function CommentFlagger({
                   className="mt-1"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="product" className="text-sm font-medium text-gray-700">
                   Product Name
@@ -218,7 +228,7 @@ export function CommentFlagger({
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="rating" className="text-sm font-medium text-gray-700">
@@ -239,7 +249,7 @@ export function CommentFlagger({
                   <span className="ml-2 text-sm text-gray-600">({demoRating} stars)</span>
                 </div>
               </div>
-              
+
               <div>
                 <Label className="text-sm font-medium text-gray-700">
                   Purchase Status
@@ -247,36 +257,34 @@ export function CommentFlagger({
                 <div className="flex items-center space-x-3 mt-2">
                   <button
                     onClick={() => setDemoVerified(true)}
-                    className={`flex items-center px-3 py-2 rounded-lg border-2 transition-all ${
-                      demoVerified 
-                        ? 'bg-green-50 border-green-300 text-green-700' 
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
+                    className={`flex items-center px-3 py-2 rounded-lg border-2 transition-all ${demoVerified
+                      ? 'bg-green-50 border-green-300 text-green-700'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
                   >
                     <Check className="w-4 h-4 mr-2" />
                     Verified Purchase
                   </button>
                   <button
                     onClick={() => setDemoVerified(false)}
-                    className={`flex items-center px-3 py-2 rounded-lg border-2 transition-all ${
-                      !demoVerified 
-                        ? 'bg-orange-50 border-orange-300 text-orange-700' 
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
+                    className={`flex items-center px-3 py-2 rounded-lg border-2 transition-all ${!demoVerified
+                      ? 'bg-orange-50 border-orange-300 text-orange-700'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
                   >
                     <AlertTriangle className="w-4 h-4 mr-2" />
                     Unverified Purchase
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {demoVerified 
-                    ? 'Verified purchases have lower fraud risk' 
+                  {demoVerified
+                    ? 'Verified purchases have lower fraud risk'
                     : 'Unverified purchases get higher scrutiny for extreme emotions'
                   }
                 </p>
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="content" className="text-sm font-medium text-gray-700">
                 Comment Content
@@ -289,7 +297,7 @@ export function CommentFlagger({
                 className="mt-1 min-h-[100px]"
               />
             </div>
-            
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-800 font-medium mb-2">💡 Test Scenarios:</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
@@ -307,7 +315,7 @@ export function CommentFlagger({
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <Button
                 onClick={handleAnalyzeDemo}
@@ -326,7 +334,7 @@ export function CommentFlagger({
                   </>
                 )}
               </Button>
-              
+
               {demoAnalysis && (
                 <>
                   <Button
@@ -346,7 +354,7 @@ export function CommentFlagger({
                 </>
               )}
             </div>
-            
+
             {/* Demo Analysis Results */}
             {demoAnalysis && (
               <DemoAnalysis comment={demoAnalysis} />
@@ -359,15 +367,45 @@ export function CommentFlagger({
       <Card className="bg-white border-2 border-gray-200">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-gray-900">
-              Customer Comments Analysis
+            <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-4">
+              <span>Customer Comments Analysis</span>
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-200 text-sm font-normal animate-in fade-in slide-in-from-left-4 duration-200">
+                  <span className="font-medium text-blue-700">{selectedIds.size} Selected</span>
+                  <div className="h-4 w-px bg-blue-200 mx-1" />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleBatchAction('approve')}
+                    className="h-6 px-2 text-green-600 hover:text-green-700 hover:bg-green-100"
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleBatchAction('flag')}
+                    className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-100"
+                  >
+                    Flag
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleBatchAction('remove')}
+                    className="h-6 px-2 text-gray-600 hover:text-gray-700 hover:bg-gray-100"
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
             </CardTitle>
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
                 <Button
                   variant={filter === 'all' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => onFilterChange('all')}
+                  onClick={() => setFilter('all')}
                   className="text-xs"
                 >
                   All
@@ -375,7 +413,7 @@ export function CommentFlagger({
                 <Button
                   variant={filter === 'flagged' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => onFilterChange('flagged')}
+                  onClick={() => setFilter('flagged')}
                   className="text-xs"
                 >
                   Flagged
@@ -383,7 +421,7 @@ export function CommentFlagger({
                 <Button
                   variant={filter === 'verified' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => onFilterChange('verified')}
+                  onClick={() => setFilter('verified')}
                   className="text-xs"
                 >
                   Verified
@@ -399,6 +437,14 @@ export function CommentFlagger({
                 className="text-xs"
               >
                 {sortBy === 'aiScore' ? 'Risk Score' : sortBy === 'date' ? 'Date' : 'Rating'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleAll}
+                className="text-xs hidden sm:flex ml-2"
+              >
+                {selectedIds.size > 0 && selectedIds.size === sortedComments.length ? 'Deselect All' : 'Select All'}
               </Button>
             </div>
           </div>
@@ -420,6 +466,8 @@ export function CommentFlagger({
                   comment={comment}
                   onClick={() => setSelectedComment(comment)}
                   onAction={(action) => onCommentAction(action, comment)}
+                  selected={selectedIds.has(comment.id)}
+                  onToggleSelect={() => toggleSelection(comment.id)}
                 />
               ))}
             </div>

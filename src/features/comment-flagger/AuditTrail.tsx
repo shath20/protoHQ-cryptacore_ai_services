@@ -1,6 +1,6 @@
 import React from 'react';
 import { Check, X, Flag, Clock } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 
 interface AuditTrailProps {
   actions: Array<{
@@ -59,9 +59,8 @@ export function AuditTrail({ actions }: AuditTrailProps) {
             {actions.map((action, index) => (
               <div
                 key={action.id}
-                className={`p-3 rounded-lg border transition-all duration-300 hover:shadow-md ${
-                  index === 0 ? 'ring-2 ring-blue-200 bg-blue-50' : ''
-                }`}
+                className={`p-3 rounded-lg border transition-all duration-300 hover:shadow-md ${index === 0 ? 'ring-2 ring-blue-200 bg-blue-50' : ''
+                  }`}
                 style={{
                   animation: index === 0 ? 'slideIn 0.3s ease-out' : 'none'
                 }}

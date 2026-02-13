@@ -1,8 +1,8 @@
 import React from 'react';
-import { Comment } from '../types';
-import { getAIScoreColor } from '../utils/format';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Comment } from '../../types';
+import { getAIScoreColor } from '../../utils/format';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { X, Check, Trash2, Flag, AlertTriangle, Star, Shield, Clock } from 'lucide-react';
 
 interface CommentDetailModalProps {
@@ -77,9 +77,8 @@ export function CommentDetailModal({ comment, onClose, onAction }: CommentDetail
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
-                        className={`w-4 h-4 ${
-                          i < comment.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                        }`}
+                        className={`w-4 h-4 ${i < comment.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                          }`}
                       />
                     ))}
                   </div>
@@ -101,12 +100,12 @@ export function CommentDetailModal({ comment, onClose, onAction }: CommentDetail
                   </div>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-sm text-gray-500 mb-2">Content</p>
                 <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{comment.content}</p>
               </div>
-              
+
               <div className="flex items-center text-sm text-gray-500">
                 <Clock className="w-4 h-4 mr-1" />
                 {new Date(comment.timestamp).toLocaleString()}
@@ -127,13 +126,12 @@ export function CommentDetailModal({ comment, onClose, onAction }: CommentDetail
                 {comment.indicators.map((indicator, index) => (
                   <div
                     key={index}
-                    className={`flex items-center p-3 rounded-lg border ${
-                      indicator.includes('Trademark') || indicator.includes('Paid')
+                    className={`flex items-center p-3 rounded-lg border ${indicator.includes('Trademark') || indicator.includes('Paid')
                         ? 'bg-red-50 border-red-200 text-red-700'
                         : indicator.includes('Extreme') || indicator.includes('Unverified')
-                        ? 'bg-orange-50 border-orange-200 text-orange-700'
-                        : 'bg-yellow-50 border-yellow-200 text-yellow-700'
-                    }`}
+                          ? 'bg-orange-50 border-orange-200 text-orange-700'
+                          : 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                      }`}
                   >
                     <AlertTriangle className="w-4 h-4 mr-2 flex-shrink-0" />
                     <span className="text-sm font-medium">{indicator}</span>

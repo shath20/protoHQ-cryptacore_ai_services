@@ -1,17 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, MessageSquare, TrendingUp, Activity } from 'lucide-react';
+import { MessageSquare, TrendingUp, Activity, Shield } from 'lucide-react';
 import { Comment } from './types';
 import { generateMockComments } from './data/mockReturns';
-import { AuditTrail } from './components/AuditTrail';
-import { CommentFlagger } from './components/CommentFlagger';
-import { DashboardHeader } from './components/DashboardHeader';
-import { ReturnAnalysisDashboard } from './components/ReturnAnalysisDashboard';
-import { ReturnMetricsPanel } from './components/ReturnMetricsPanel';
+import { DashboardHeader } from './components/layout/DashboardHeader';
+import { CommentFlaggerModule } from './features/comment-flagger/CommentFlaggerModule';
+import { ReturnAnalysisModule } from './features/return-analysis/ReturnAnalysisModule';
+import { SettingsPanel } from './features/settings/SettingsPanel';
+import { useAuth } from './context/AuthContext';
+import { LoginPage } from './pages/LoginPage';
+// import { useSettings } from './context/SettingsContext';
 
 function App() {
+  // const { settings } = useSettings(); // Not used directly in this file
   const [comments, setComments] = useState<Comment[]>([]);
   const [activeTab, setActiveTab] = useState<'comment-flagger' | 'return-analysis'>('comment-flagger');
   const [isLoading, setIsLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const { user, loading } = useAuth();
 
   // Simulate initial data loading
   useEffect(() => {
@@ -23,6 +29,18 @@ function App() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage onLoginSuccess={() => { }} />;
+  }
 
   const handleCommentAction = (action: 'approve' | 'remove' | 'flag', comment: Comment) => {
     setComments(prev => prev.map(c =>
@@ -46,7 +64,15 @@ function App() {
       </div>
 
       <div className="relative z-10">
-        <DashboardHeader />
+        <DashboardHeader onOpenSettings={() => setShowSettings(true)} />
+
+        {showSettings && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-2xl transform transition-all scale-100">
+              <SettingsPanel onClose={() => setShowSettings(false)} />
+            </div>
+          </div>
+        )}
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Tab Navigation */}
@@ -56,8 +82,8 @@ function App() {
                 <button
                   onClick={() => setActiveTab('comment-flagger')}
                   className={`flex-1 flex items-center justify-center px-6 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'comment-flagger'
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                 >
                   <MessageSquare className="w-5 h-5 mr-2" />
@@ -66,8 +92,8 @@ function App() {
                 <button
                   onClick={() => setActiveTab('return-analysis')}
                   className={`flex-1 flex items-center justify-center px-6 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'return-analysis'
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                 >
                   <TrendingUp className="w-5 h-5 mr-2" />
@@ -78,7 +104,7 @@ function App() {
           </div>
 
           {/* Tab Content */}
-          <div className="animate-in fade-in duration-300">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
             {activeTab === 'comment-flagger' ? (
               <div className="space-y-6">
                 <div className="text-center mb-8">
@@ -114,100 +140,8 @@ function App() {
           </div>
         </main>
       </div>
-
-
     </div>
   );
 }
-
-// Separate module for Comment Flagger
-function CommentFlaggerModule({
-  comments,
-  isLoading,
-  onCommentAction,
-  onAddComment
-}: {
-  comments: Comment[];
-  isLoading: boolean;
-  onCommentAction: (action: 'approve' | 'remove' | 'flag', comment: Comment) => void;
-  onAddComment: (comment: Comment) => void;
-}) {
-  const [filter, setFilter] = useState<'all' | 'flagged' | 'verified'>('all');
-  const [auditActions, setAuditActions] = useState<Array<{
-    id: string;
-    commentId: string;
-    author: string;
-    action: string;
-    timestamp: string;
-    score: number;
-  }>>([]);
-
-  const handleCommentAction = (action: 'approve' | 'remove' | 'flag', comment: Comment) => {
-    onCommentAction(action, comment);
-
-    const auditEntry = {
-      id: `audit-${Date.now()}`,
-      commentId: comment.id,
-      author: comment.author,
-      action: action === 'approve' ? 'Approved' : action === 'remove' ? 'Removed' : 'Flagged',
-      timestamp: new Date().toISOString(),
-      score: comment.aiScore
-    };
-    setAuditActions(prev => [auditEntry, ...prev].slice(0, 10));
-  };
-
-  const filteredComments = comments.filter(comment => {
-    if (filter === 'flagged') return comment.flagged;
-    if (filter === 'verified') return comment.verifiedPurchase;
-    return true;
-  });
-
-  const stats = {
-    total: comments.length,
-    flagged: comments.filter(c => c.flagged).length,
-    aiGenerated: comments.filter(c => c.aiScore > 70).length,
-    verified: comments.filter(c => c.verifiedPurchase).length
-  };
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      <div className="lg:col-span-3">
-        <CommentFlagger
-          comments={filteredComments}
-          isLoading={isLoading}
-          filter={filter}
-          onFilterChange={setFilter}
-          onCommentAction={handleCommentAction}
-          onAddComment={onAddComment}
-          stats={stats}
-        />
-      </div>
-      <div className="lg:col-span-1">
-        <AuditTrail actions={auditActions} />
-      </div>
-    </div>
-  );
-}
-
-// Separate module for Return Analysis
-function ReturnAnalysisModule({
-  comments,
-  isLoading
-}: {
-  comments: Comment[];
-  isLoading: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2">
-        <ReturnAnalysisDashboard comments={comments} isLoading={isLoading} />
-      </div>
-      <div className="lg:col-span-1">
-        <ReturnMetricsPanel comments={comments} />
-      </div>
-    </div>
-  );
-}
-
 
 export default App;

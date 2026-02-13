@@ -1,6 +1,6 @@
 import React from 'react';
-import { ReturnRequest } from '../types';
-import { formatCurrency, getScoreColor, formatRelativeTime } from '../utils/format';
+import { ReturnRequest } from '../../types';
+import { formatCurrency, getScoreColor, formatRelativeTime } from '../../utils/format';
 import { AlertCircle, Package, Clock } from 'lucide-react';
 
 interface ReturnRowProps {
@@ -10,9 +10,9 @@ interface ReturnRowProps {
 
 export function ReturnRow({ returnItem, onClick }: ReturnRowProps) {
   const scoreColor = getScoreColor(returnItem.fraudScore);
-  
+
   return (
-    <div 
+    <div
       className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
       onClick={onClick}
     >
@@ -42,7 +42,7 @@ export function ReturnRow({ returnItem, onClick }: ReturnRowProps) {
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2 mt-2 ml-15">
             {returnItem.riskTags.map((tag, index) => (
               <span
@@ -54,7 +54,7 @@ export function ReturnRow({ returnItem, onClick }: ReturnRowProps) {
             ))}
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           {returnItem.fraudScore > 70 && (
             <AlertCircle className="w-5 h-5 text-red-500" />

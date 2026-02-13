@@ -1,26 +1,28 @@
 import React from 'react';
-import { Comment } from '../types';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { FraudScoreCard } from './FraudScoreCard';
+import { Comment } from '../../types';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { FraudScoreCard } from '../comment-flagger/FraudScoreCard';
 import { Shield, TrendingUp, AlertTriangle, Users, DollarSign, Clock } from 'lucide-react';
+import { useSettings } from '../../context/SettingsContext';
 
 interface ReturnMetricsPanelProps {
   comments: Comment[];
 }
 
 export function ReturnMetricsPanel({ comments }: ReturnMetricsPanelProps) {
+  const { settings } = useSettings();
   const totalReturns = comments.length;
-  const highRiskReturns = comments.filter(c => c.aiScore > 70).length;
-  const mediumRiskReturns = comments.filter(c => c.aiScore > 40 && c.aiScore <= 70).length;
-  const lowRiskReturns = comments.filter(c => c.aiScore <= 40).length;
-  
-  const avgFraudScore = comments.length > 0 
+  const highRiskReturns = comments.filter(c => c.aiScore > settings.highRiskThreshold).length;
+  const mediumRiskReturns = comments.filter(c => c.aiScore > settings.mediumRiskThreshold && c.aiScore <= settings.highRiskThreshold).length;
+  const lowRiskReturns = comments.filter(c => c.aiScore <= settings.mediumRiskThreshold).length;
+
+  const avgFraudScore = comments.length > 0
     ? Math.round(comments.reduce((sum, c) => sum + c.aiScore, 0) / comments.length)
     : 0;
-  
+
   const verifiedReturns = comments.filter(c => c.verifiedPurchase).length;
   const unverifiedReturns = comments.filter(c => !c.verifiedPurchase).length;
-  
+
   // Calculate top fraud pattern
   const fraudPatterns = comments.reduce((patterns, comment) => {
     comment.indicators.forEach(indicator => {
@@ -28,11 +30,11 @@ export function ReturnMetricsPanel({ comments }: ReturnMetricsPanelProps) {
     });
     return patterns;
   }, {} as Record<string, number>);
-  
+
   const topPattern = Object.entries(fraudPatterns)
-    .sort(([,a], [,b]) => b - a)[0];
-  
-  const topPatternPercentage = topPattern 
+    .sort(([, a], [, b]) => b - a)[0];
+
+  const topPatternPercentage = topPattern
     ? Math.round((topPattern[1] / totalReturns) * 100)
     : 0;
 
@@ -54,7 +56,7 @@ export function ReturnMetricsPanel({ comments }: ReturnMetricsPanelProps) {
             trend={12}
             color="blue"
           />
-          
+
           <FraudScoreCard
             title="High Risk %"
             value={totalReturns > 0 ? Math.round((highRiskReturns / totalReturns) * 100) : 0}
@@ -62,7 +64,7 @@ export function ReturnMetricsPanel({ comments }: ReturnMetricsPanelProps) {
             trend={-5}
             color="red"
           />
-          
+
           <FraudScoreCard
             title="Avg Fraud Score"
             value={avgFraudScore}
@@ -88,29 +90,29 @@ export function ReturnMetricsPanel({ comments }: ReturnMetricsPanelProps) {
               <span className="text-sm font-bold text-red-700">{highRiskReturns}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-red-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${totalReturns > 0 ? (highRiskReturns / totalReturns) * 100 : 0}%` }}
               ></div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-orange-700">Medium Risk</span>
               <span className="text-sm font-bold text-orange-700">{mediumRiskReturns}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-orange-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${totalReturns > 0 ? (mediumRiskReturns / totalReturns) * 100 : 0}%` }}
               ></div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-green-700">Low Risk</span>
               <span className="text-sm font-bold text-green-700">{lowRiskReturns}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-green-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${totalReturns > 0 ? (lowRiskReturns / totalReturns) * 100 : 0}%` }}
               ></div>
@@ -159,18 +161,18 @@ export function ReturnMetricsPanel({ comments }: ReturnMetricsPanelProps) {
               <span className="text-sm font-bold text-green-700">{verifiedReturns}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-green-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${totalReturns > 0 ? (verifiedReturns / totalReturns) * 100 : 0}%` }}
               ></div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-orange-700">Unverified</span>
               <span className="text-sm font-bold text-orange-700">{unverifiedReturns}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="bg-orange-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${totalReturns > 0 ? (unverifiedReturns / totalReturns) * 100 : 0}%` }}
               ></div>
@@ -192,11 +194,10 @@ export function ReturnMetricsPanel({ comments }: ReturnMetricsPanelProps) {
             {comments.slice(0, 5).map((comment) => (
               <div key={comment.id} className="flex items-center justify-between text-sm">
                 <span className="text-gray-700 truncate">{comment.author}</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  comment.aiScore > 70 ? 'bg-red-100 text-red-700' :
-                  comment.aiScore > 40 ? 'bg-orange-100 text-orange-700' :
-                  'bg-green-100 text-green-700'
-                }`}>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${comment.aiScore > settings.highRiskThreshold ? 'bg-red-100 text-red-700' :
+                    comment.aiScore > settings.mediumRiskThreshold ? 'bg-orange-100 text-orange-700' :
+                      'bg-green-100 text-green-700'
+                  }`}>
                   {comment.aiScore}
                 </span>
               </div>
